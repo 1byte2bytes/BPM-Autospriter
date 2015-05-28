@@ -66,15 +66,15 @@ emotecount = 0
 
 for image in imagenames:
     if(emotecount < len(imagenames)-1):
-        maincsschunk += "a[href=" + '"' + image + '"' + "],\r\n"
+        maincsschunk += "a[href=" + '"/' + image + '"' + "],\r\n"
         emotecount += 1
         print "Added emote " + image + " to main css chunk."
     else:
-        maincsschunk += "a[href=" + '"' + image + '"' + "]{\r\n"
+        maincsschunk += "a[href=" + '"/' + image + '"' + "]{\r\n"
         print "Added emote " + image + " to main css chunk."
 
 print "Adding generic css to main css chunk"
-maincsschunk += "display:block;\r\nclear:none;\r\nfloat:left;\r\nbackground-image(%%" + spritesheetname + "%%);\r\n}\r\n"
+maincsschunk += "  display:block;\r\n  clear:none;\r\n  float:left;\r\n  background-image:url(%%" + spritesheetname + "%%);\r\n}\r\n"
 
 print "Generating emote css chunks"
 
@@ -88,14 +88,14 @@ for image in imagenames:
     emoteposition = imagelocations[emotecount]
     emotepositionx = emoteposition[0]
     emotepositiony = emoteposition[1]
-    tempemotecsschunk += "background-position:" + str(emotepositionx) + "px " + str(emotepositiony) + " px;\r\n"
-    print "Setting emote position to " + str(emotepositionx) + "px, " + str(emotepositiony) + "px"
+    tempemotecsschunk += "  background-position:-" + str(emotepositionx) + "px -" + str(emotepositiony) + "px;\r\n"
+    print "Setting emote position to -" + str(emotepositionx) + "px, -" + str(emotepositiony) + "px"
     emotesize = imagesizes[emotecount]
     emotesizewidth = emotesize[0]
     emotesizeheight = emotesize[1]
-    tempemotecsschunk += "width:" + str(emotesizewidth) + "px;\r\n"
+    tempemotecsschunk += "  width:" + str(emotesizewidth) + "px;\r\n"
     print "Setting emote width to " + str(emotesizewidth)
-    tempemotecsschunk += "height:" + str(emotesizeheight) + "px;\r\n"
+    tempemotecsschunk += "  height:" + str(emotesizeheight) + "px;\r\n"
     print "Setting emote height to " + str(emotesizeheight)
     tempemotecsschunk += "}\r\n"
     emotecsschunks.append(tempemotecsschunk)
