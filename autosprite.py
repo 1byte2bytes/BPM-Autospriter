@@ -108,7 +108,8 @@ if(os.path.exists("images") == True):
         print("Found a file with the name 'images', but it doesn't seem to be a folder.")
         sys.exit(-1)
 else:
-    print("No images folder found.")
+    print("No images folder found. We will create it for you!")
+    os.makedirs("images")
     sys.exit(-2)
 
 imagescount = 0
@@ -126,8 +127,9 @@ if(os.path.exists("temp") == True):
         print("Found a file with the name 'temp', but it doesn't seem to be a folder.")
         sys.exit(-1)
 else:
-    print("No temp folder found.")
-    sys.exit(-2)
+    print("No temp folder found. Making it now.")
+    os.makedirs("temp")
+    #sys.exit(-2)
 
 imagescount = 0
 for filename in os.listdir(os.getcwd() + "/temp"):
