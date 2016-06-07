@@ -1,3 +1,6 @@
 images/*
+temp/*
+__pycache__/*
+dist/*
 *.png
 *.txt
