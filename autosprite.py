@@ -217,6 +217,13 @@ for filename in os.listdir(os.getcwd() + "/images"):
             if(filename.endswith(".png") or filename.endswith(".jpg")):
                 os.remove(os.getcwd() + "/temp/" + filename)
 
+images = []
+imagelocations = []
+imagesizes = []
+imagenames = []
+currentimage = 0
+totalimages = 0
+
 print("")
 print("==================================")
 print("Detecting images!")
