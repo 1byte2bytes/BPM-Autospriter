@@ -2,6 +2,7 @@ import os
 import sys
 from PIL import Image
 from random import choice
+import re
 
 images = []
 imagelocations = []
@@ -9,6 +10,90 @@ imagesizes = []
 imagenames = []
 currentimage = 0
 spritesheetname = "".join(choice("abcdefghijklmnopqrstuvwxyz") for i in range(10))
+
+def analyseImage(path):
+    '''
+    Pre-process pass over the image to determine the mode (full or additive).
+    Necessary as assessing single frames isn't reliable. Need to know the mode
+    before processing all frames.
+    '''
+    im = Image.open(path)
+    results = {
+        'size': im.size,
+        'mode': 'full',
+    }
+    try:
+        while True:
+            if im.tile:
+                tile = im.tile[0]
+                update_region = tile[1]
+                update_region_dimensions = update_region[2:]
+                if update_region_dimensions != im.size:
+                    results['mode'] = 'partial'
+                    break
+            im.seek(im.tell() + 1)
+    except EOFError:
+        pass
+    return results
+
+
+def processImage(path):
+    '''
+    Iterate the GIF, extracting each frame.
+    '''
+    mode = analyseImage(path)['mode']
+
+    im = Image.open(path)
+
+    i = 0
+    p = im.getpalette()
+    last_frame = im.convert('RGBA')
+
+    try:
+        while True:
+            print("saving %s (%s) frame %d, %s %s" % (path, mode, i, im.size, im.tile))
+
+            '''
+            If the GIF uses local colour tables, each frame will have its own palette.
+            If not, we need to apply the global palette to the new frame.
+            '''
+            if not im.getpalette():
+                im.putpalette(p)
+
+            new_frame = Image.new('RGBA', im.size)
+
+            '''
+            Is this file a "partial"-mode GIF where frames update a region of a different size to the entire image?
+            If so, we need to construct the new frame by pasting it on top of the preceding frames.
+            '''
+            if mode == 'partial':
+                new_frame.paste(last_frame)
+
+            new_frame.paste(im, (0,0), im.convert('RGBA'))
+            new_frame.save('temp/%s-%d.png' % (''.join(os.path.basename(path).split('.')[:-1]), i), 'PNG')
+
+            i += 1
+            last_frame = new_frame
+            im.seek(im.tell() + 1)
+    except EOFError:
+        pass
+
+def tryint(s):
+    try:
+        return int(s)
+    except:
+        return s
+
+def alphanum_key(s):
+    """ Turn a string into a list of string and number chunks.
+        "z23a" -> ["z", 23, "a"]
+    """
+    return [ tryint(c) for c in re.split('([0-9]+)', s) ]
+
+def sort_nicely(l):
+    """ Sort the given list in the way that humans expect.
+    """
+    l.sort(key=alphanum_key)
 
 print("")
 print("==================================")
@@ -28,11 +113,107 @@ else:
 
 imagescount = 0
 for filename in os.listdir(os.getcwd() + "/images"):
-    if(filename.endswith(".png") or filename.endswith(".jpg")):
+    if(filename.endswith(".png") or filename.endswith(".jpg") or filename.endswith(".gif")):
         imagescount += 1
 if(imagescount == 0):
     print("No images found in the images folder that could be made into emotes...")
     sys.exit(-3)
+
+if(os.path.exists("temp") == True):
+    if(os.path.isdir("temp") == True):
+        print("Found temp folder!")
+    else:
+        print("Found a file with the name 'temp', but it doesn't seem to be a folder.")
+        sys.exit(-1)
+else:
+    print("No temp folder found.")
+    sys.exit(-2)
+
+imagescount = 0
+for filename in os.listdir(os.getcwd() + "/temp"):
+    if(filename.endswith(".png") or filename.endswith(".jpg") or filename.endswith(".gif")):
+        imagescount += 1
+if(imagescount != 0):
+    print("Temp folder is not empty.")
+    sys.exit(-4)
+
+print("")
+print("==================================")
+print("Detecting animated images!")
+print("==================================")
+print("")
+
+animemotefilename = ""
+
+for filename in os.listdir(os.getcwd() + "/images"):
+    if(filename.endswith(".gif")):
+        print("Found emote file " + filename)
+
+        im = Image.open("images/" + filename)
+
+        try:
+            while 1:
+                im.seek(im.tell()+1)
+        except EOFError:
+            if(im.tell() > 100):
+                print("Animated emote is over 100 frames long.")
+                sys.exit(-6)
+            else:
+                if(im.tell() == 0):
+                    print("Animated emote only has 1 frame. This should not be an animated emote.")
+                    sys.exit(-7)
+                else:
+                    print("Animated emote is " + str(im.tell()) + " frames long")
+            pass
+
+        im.close()
+
+        processImage('images/' + filename)
+        animemotefilename = filename
+
+        new_im = Image.new('RGBA', (1000,1000), (255, 0, 0, 0))
+
+        currentimage = 0
+        totalimages = 0
+        animimage = []
+        for filename in os.listdir(os.getcwd() + "/temp"):
+            if(filename.endswith(".png") or filename.endswith(".jpg")):
+                totalimages += 1
+                animimage.append(filename)
+        if(totalimages == 0):
+            print("No images found in the images folder that could be made into emotes...")
+            sys.exit(-9)
+
+        sort_nicely(animimage)
+
+        for i in range(0,1000,100):
+            for j in range(0,1000,100):
+                if(currentimage < totalimages):
+                    im = Image.open(os.getcwd() + "/temp/" + animimage[currentimage])
+                    print("Opened image " + os.getcwd() + "/temp/" + animimage[currentimage])
+                    im.thumbnail((100,100))
+                    imagelocations.append([i, j])
+                    emotename = animimage[currentimage].replace(' ', '')[:-4]
+                    print("Placing emote " + emotename + " at location " + str(i) + ", " + str(j))
+                    imagenames.append(emotename)
+                    (width, height) = im.size
+                    print("Emote is " + str(width) + " pixels wide and " + str(height) + " pixels high.")
+                    imagesizes.append([width, height])
+                    new_im.paste(im, (i,j))
+                    currentimage += 1
+
+        currentimage = 0
+        totalimages = 0
+
+        print("Saved spritesheet as " + animemotefilename[:-4] + ".png")
+
+        new_im.save(animemotefilename[:-4] + '.png')
+
+        new_im.close()
+
+        for filename in os.listdir(os.getcwd() + "/temp"):
+            if(filename.endswith(".png") or filename.endswith(".jpg")):
+                os.remove(os.getcwd() + "/temp/" + filename)
 
 print("")
 print("==================================")
@@ -57,8 +238,8 @@ print("")
 
 new_im = Image.new('RGBA', (1000,1000), (255, 0, 0, 0))
 
-for i in xrange(0,1000,100):
-    for j in xrange(0,1000,100):
+for i in range(0,1000,100):
+    for j in range(0,1000,100):
         if(currentimage < totalimages):
             im = Image.open(os.getcwd() + "/images/" + images[currentimage])
             print("Opened image " + os.getcwd() + "/images/" + images[currentimage])
